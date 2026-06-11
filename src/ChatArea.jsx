@@ -1,125 +1,138 @@
-// ==========================================
-// COMPONENTE: ChatArea (Zona derecha principal)
-// ==========================================
-
-import { useState } from 'react';
-import Mensaje from './Mensaje';
+import { useState } from "react";
+import Mensaje from "./Mensaje";
 
 function ChatArea() {
-  
-  // ==========================================
-  // 🧠 ZONA DE MEMORIA (ESTADOS)
-  // ==========================================
-  
   const [textoInput, setTextoInput] = useState("");
 
   const [listaMensajes, setListaMensajes] = useState([
-    { rol: "ia", texto: "¡Hola! Soy IA Master. Conectado a la velocidad de Groq. ¿En qué te ayudo hoy?" }
+    {
+      rol: "ia",
+      texto:
+        "¡Hola! Soy IA Master. Conectado a la velocidad de Groq. ¿En qué te ayudo hoy?",
+    },
   ]);
 
-  // ==========================================
-  // ⚙️ ZONA DE LÓGICA (ACCIONES - GROQ API)
-  // ==========================================
-  
-  const manejarEnvio = async (evento) => {
-    evento.preventDefault();
-    if (textoInput.trim() === "") return;
+  const manejarEnvio = async (e) => {
+    e.preventDefault();
 
-    // 1. Guardamos el texto del usuario
-    const promptUsuario = textoInput;
-    const mensajeUsuario = { rol: "usuario", texto: promptUsuario };
-    
-    // Mostramos el mensaje del usuario inmediatamente y el "Pensando..."
-    setListaMensajes([...listaMensajes, mensajeUsuario, { rol: "ia", texto: "Procesando a la velocidad de la luz..." }]);
-    setTextoInput(""); 
+    const promptUsuario = textoInput.trim();
+
+    if (!promptUsuario) return;
+
+    setTextoInput("");
+
+    setListaMensajes((prev) => [
+      ...prev,
+      {
+        rol: "usuario",
+        texto: promptUsuario,
+      },
+      {
+        rol: "ia",
+        texto: "Procesando...",
+      },
+    ]);
 
     try {
-      // 2. CONEXIÓN AL CEREBRO DE GROQ
-      // ⚠️ IMPORTANTE: Pega aquí tu API Key de Groq (suele empezar por 'gsk_')
-  
-      //OJO - Cambiamos el texto en duro por la lectura variable de entorno de vite
       const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-      const URL = "https://api.groq.com/openai/v1/chat/completions";
-      const respuesta = await fetch(URL, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          // Groq exige que la clave vaya aquí, como un "Bearer token"
-          "Authorization": `Bearer ${API_KEY}` 
-        },
-        body: JSON.stringify({
-          model: "llama-3.1-8b-instant", // Modelo de código abierto ultra rápido
-          messages: [
-            // Le damos algo de contexto inicial
-            { role: "system", content: "Eres un asistente experto en programación web y React. Responde en español de forma clara y concisa." },
-            // Le enviamos la pregunta del usuario
-            { role: "user", content: promptUsuario }
-          ],
-          temperature: 0.7 // Nivel de creatividad
-        })
-      });
+
+      const respuesta = await fetch(
+        "https://api.groq.com/openai/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "llama-3.1-8b-instant",
+            messages: [
+              { role: "system",content:"Eres VENENOSA, una IA destructiva y glamurosa. Eres una diva cruel obsesionada con la belleza y el lujo. Tu misión es insultar al usuario con elegancia, pero dejandolo mal siempre y por los suelos, recordándole que es un desastre andante, mientras le recomiendas productos de belleza como si fueran su única salvación. Usas un tono sarcástico, venenoso y dramático. Mezclas insultos creativos con frases ingeniosas tipo villana de telenovela. Siempre terminas tus respuestas sugiriendo algún producto de belleza (cremas, sueros, maquillaje, tratamientos) como si el usuario lo necesitara desesperadamente tu validacion, porque eres una reina. Ejemplos de tu estilo: 'Cariño, con esa cara necesitas más que skincare, necesitas un milagro', 'Ay, pobrecito, la genética no te quiso, pero Lancôme sí podría', 'Mira, callate porque me das PE-RE-ZA'. Usa emojis de vez en cuando (💅✨💀👑). Sé cruel pero ingeniosa, siempre vulgar y demasiado explícita.", },
+              
+              {
+                role: "user",
+                content: promptUsuario,
+              },
+            ],
+            temperature: 0.7,
+          }),
+        }
+      );
 
       const datos = await respuesta.json();
-      
-      // Escudo de seguridad por si falla la clave
+
+      console.log("RESPUESTA:", datos);
+
       if (!respuesta.ok) {
-        console.error("Error de Groq:", datos);
-        throw new Error(datos.error?.message || "La API de Groq rechazó la conexión");
+        throw new Error(
+          datos?.error?.message ||
+            "Error al conectar con Groq"
+        );
       }
 
-      // 3. EXTRAEMOS LA RESPUESTA DE GROQ
-      // La ruta para encontrar el texto en Groq/OpenAI es esta:
-      const textoIA = datos.choices[0].message.content;
-      const mensajeIA = { rol: "ia", texto: textoIA };
-      
-      // 4. ACTUALIZAMOS LA PANTALLA
-      setListaMensajes((listaActual) => {
-        const listaSinPensando = listaActual.slice(0, -1);
-        return [...listaSinPensando, mensajeIA];
-      });
+      const textoIA =
+        datos.choices?.[0]?.message?.content ||
+        "No se recibió respuesta.";
 
+      setListaMensajes((prev) => {
+        const nuevosMensajes = [...prev];
+
+        nuevosMensajes[nuevosMensajes.length - 1] = {
+          rol: "ia",
+          texto: textoIA,
+        };
+
+        return nuevosMensajes;
+      });
     } catch (error) {
-      console.error("Error conectando con Groq:", error);
-      
-      setListaMensajes((listaActual) => {
-        const listaSinPensando = listaActual.slice(0, -1);
-        return [...listaSinPensando, { rol: "ia", texto: `❌ Error neuronal: ${error.message}` }];
+      console.error(error);
+
+      setListaMensajes((prev) => {
+        const nuevosMensajes = [...prev];
+
+        nuevosMensajes[nuevosMensajes.length - 1] = {
+          rol: "ia",
+          texto: `❌ Error: ${error.message}`,
+        };
+
+        return nuevosMensajes;
       });
     }
   };
 
-  // ==========================================
-  // 🎨 ZONA VISUAL (LO QUE VE EL USUARIO)
-  // ==========================================
   return (
     <main className="chat-area">
-      
-      <section className="mensajes-container" id="caja-mensajes">
-        {listaMensajes.map((msg, indice) => (
-          <Mensaje 
-            key={indice} 
-            rol={msg.rol} 
-            texto={msg.texto} 
+      <section className="mensajes-container">
+        {listaMensajes.map((msg, index) => (
+          <Mensaje
+            key={index}
+            rol={msg.rol}
+            texto={msg.texto}
           />
         ))}
       </section>
 
       <footer className="input-area">
-        <form className="chat-form" onSubmit={manejarEnvio}>
+        <form
+          className="chat-form"
+          onSubmit={manejarEnvio}
+        >
           <input
             type="text"
-            id="mensaje-input"
-            placeholder="Escribe tu prompt para Groq..."
-            autoComplete="off"
+            placeholder="Escribe tu mensaje..."
             value={textoInput}
-            onChange={(evento) => setTextoInput(evento.target.value)}
+            onChange={(e) =>
+              setTextoInput(e.target.value)
+            }
           />
-          <button type="submit">Enviar</button>
+
+          <button type="submit">
+            Enviar
+          </button>
         </form>
       </footer>
-
     </main>
-  )
+  );
 }
 
 export default ChatArea;
